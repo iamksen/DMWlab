@@ -13,6 +13,8 @@ int MIN_CONFIDENCE;
 map< int, vector<string> > dataset; //map to store dataset; map< TID, ITEMSET >
 map< int, vector<string> > :: iterator mpit;
 map< vector<string>, int> freq; //stores frequency of itemsets; map< ITEMSET, FREQUENCY >
+vector< string > item_list; //store all items of dataset
+vector< vector<string> > powerset; //store all subset of item list
 
 /* Function to print dataset (transactions) */
 void print_dataset()
@@ -155,6 +157,7 @@ int processinput()
 			if( line[i] == ',' || line[i+1] == '\0'){ //if a complete column_header is processed or it is last column_header 
 				column_position++;
 				items[column_position] = column_header;
+				item_list.push_back( column_header ); //add column_header to all item list
 				column_header = "";
 				while( (i+1) < (int)line.length() && line[i+1] == ' ' )
 					i++;
@@ -181,37 +184,71 @@ int processinput()
 	return count; //return no of transactions ; input file read successfully
 }
 
-/* function for calculating association rules */
-void association_rule( int total_transaction )
+/* function to generate all subsets of items */
+void generate_powerset()
 {
-	int min_per;
-	
+	int set_size = pow(2, item_list.size() );
+	vector<string> subset;
 
-	map< vector<string>, int> result;
-	map< vector<string>, int> :: iterator mp1, mp2;
-	vector<string> temp;
-	int alone = 0, both = 0; // Confidence will be both/alone ; >= MIN_CONFIDENCE
-
-	cout<<"\nAssociation Rules"<<endl;
-	//vector<string> left_side; //left side of AR
-	string left_side, right_side;
-	for(mp1 = freq.begin() ; mp1 != freq.end(); mp1++){ //generating possible candidates for frequent itemset
-		if( mp1->first.size() <=1 ) continue; //if itemset has only one element
-
-		left_side = mp1->first[0]; //replace it with left side of the rule and left_side with vector<string>
-		right_side = mp1->first[1]; //replace it with right side of the rule and right_side with vector<string>
- 
-		for(mp2 = freq.begin(); mp2 != freq.end(); mp2++){
-			if( find( mp2->first.begin(), mp2->first.end(), left_side) != mp2->first.end() ){
-				alone++;
-				if( find( mp2->first.begin(), mp2->first.end(), right_side) != mp2->first.end() )
-					both++;
-			}
+	for(int i = 0 ; i < set_size; i++ ){
+		subset.clear();
+		for(int j = 0 ; j < item_list.size(); j++ ){
+			if( i&( 1<< j))
+				subset.push_back(item_list[j]);
 		}
-		if(alone != 0 && (ceil((float)both/alone)*100 > MIN_CONFIDENCE) ){
-			cout<<left_side<<" --> "<<right_side<<endl;
+		if( subset.size() > 0){
+			sort(subset.begin(), subset.end()); // for ease
+			powerset.push_back( subset );
 		}
 	}
+}
+
+/* function for calculating association rules */
+void association_rule()
+{
+	cout<<"\nAssociation Rules"<<endl;
+	int alone, both; // Confidence will be both/alone ; >= MIN_CONFIDENCE
+	vector<string> left_side, right_side, temp; // AR : (left_side) --> (right_side)
+	vector< vector<string> > ::iterator sub1, sub2;
+	map< vector<string>, int> :: iterator fit;
+
+	for( sub1 = powerset.begin(); sub1 != powerset.end() ; sub1++){
+		left_side = (*sub1);
+		for( sub2 = powerset.begin(); sub2 != powerset.end(); sub2++){
+			if( sub1 == sub2 ) continue; //if left_side and right_side both are equal
+			right_side = (*sub2);
+			alone = 0, both = 0;
+
+			//check if right_side is completely inside left_side
+			if( includes(left_side.begin(), left_side.end(), right_side.begin(), right_side.end()))
+				continue;
+			//if( includes( right_side.begin(), right_side.end(), left_side.begin(), left_side.end()))
+			//	continue;
+
+			for( fit = freq.begin() ; fit != freq.end() ; fit++ ) {
+				temp = fit->first; //a transaction
+				if( includes(temp.begin(), temp.end(), left_side.begin(), left_side.end()) ){ //if left_side is present in transaction
+					alone++;
+					if( includes(temp.begin(), temp.end(), right_side.begin(), right_side.end()) ) //if right_side is also present in transaction
+						both++;
+				}
+			}
+
+			//print association rule
+			if(alone != 0 && (ceil((float)(both*100)/alone) >= MIN_CONFIDENCE) ){
+				cout<<"("<<left_side[0];
+				for(int i = 1 ; i < (int)left_side.size(); i++)
+					cout<<" , "<<left_side[i];
+				cout<<") --> ";
+
+				cout<<"("<<right_side[0];
+				for(int i = 1 ; i < (int)right_side.size(); i++)
+					cout<<" , "<<right_side[i];
+				cout<<")"<<endl;
+			}
+		}
+	}
+	cout<<"----------------------------------------------------------------\n";
 }
 
 int main()
@@ -220,6 +257,8 @@ int main()
 	if( total_transaction == 0 ) //error while reading input file
 		return 1;
 	
+	generate_powerset();
+
 	cout<<"Please enter minimum support % value ";
 	cin>>min_per;
 	MIN_SUPPORT = ceil(min_per*total_transaction)/100;
@@ -227,7 +266,6 @@ int main()
 	cout<<"Please enter minimum confidence % value ";
 	cin>>MIN_CONFIDENCE;
 	
-
 	print_dataset(); //to print dataset
 	cout<<"\nC1\n";
 	calculate_c1();
@@ -256,7 +294,7 @@ int main()
 		print(freq);
 		k++;
 
-		association_rule(MIN_CONFIDENCE);
+		association_rule();
 	}
 	return 0;
 }
