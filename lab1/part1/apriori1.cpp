@@ -181,6 +181,39 @@ int processinput()
 	return count; //return no of transactions ; input file read successfully
 }
 
+/* function for calculating association rules */
+void association_rule( int total_transaction )
+{
+	int min_per;
+	
+
+	map< vector<string>, int> result;
+	map< vector<string>, int> :: iterator mp1, mp2;
+	vector<string> temp;
+	int alone = 0, both = 0; // Confidence will be both/alone ; >= MIN_CONFIDENCE
+
+	cout<<"\nAssociation Rules"<<endl;
+	//vector<string> left_side; //left side of AR
+	string left_side, right_side;
+	for(mp1 = freq.begin() ; mp1 != freq.end(); mp1++){ //generating possible candidates for frequent itemset
+		if( mp1->first.size() <=1 ) continue; //if itemset has only one element
+
+		left_side = mp1->first[0]; //replace it with left side of the rule and left_side with vector<string>
+		right_side = mp1->first[1]; //replace it with right side of the rule and right_side with vector<string>
+ 
+		for(mp2 = freq.begin(); mp2 != freq.end(); mp2++){
+			if( find( mp2->first.begin(), mp2->first.end(), left_side) != mp2->first.end() ){
+				alone++;
+				if( find( mp2->first.begin(), mp2->first.end(), right_side) != mp2->first.end() )
+					both++;
+			}
+		}
+		if(alone != 0 && (ceil((float)both/alone)*100 > MIN_CONFIDENCE) ){
+			cout<<left_side<<" --> "<<right_side<<endl;
+		}
+	}
+}
+
 int main()
 {
 	int min_per, total_transaction = processinput();
@@ -189,8 +222,11 @@ int main()
 	
 	cout<<"Please enter minimum support % value ";
 	cin>>min_per;
-
 	MIN_SUPPORT = ceil(min_per*total_transaction)/100;
+
+	cout<<"Please enter minimum confidence % value ";
+	cin>>MIN_CONFIDENCE;
+	
 
 	print_dataset(); //to print dataset
 	cout<<"\nC1\n";
@@ -219,6 +255,8 @@ int main()
 		cout<<"\nL"<<k<<endl;
 		print(freq);
 		k++;
+
+		association_rule(MIN_CONFIDENCE);
 	}
 	return 0;
 }
