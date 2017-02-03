@@ -4,10 +4,11 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <cmath>
 using namespace std;
 
-#define MIN_SUPPORT 10
-#define MIN_CONFIDENCE 3
+int MIN_SUPPORT;
+int MIN_CONFIDENCE;
 
 map< int, vector<int> > dataset; //map to store dataset; map< TID, ITEMSET >
 map< int, vector<int> > :: iterator mpit;
@@ -137,7 +138,7 @@ int processinput()
 
 	if( file.is_open() == false ){ //if there is error in opening the file
 		cout<<"Error while opening input file"<<endl;
-		return 1;
+		return 0;
 	}
 
 	int count = 1, value, mul;
@@ -158,14 +159,18 @@ int processinput()
 		dataset[count++] = entry;
 	}
 	file.close(); //close file
-	return 0;
+	return (count-1); //return no of transactions ; input file read successfully
 }
 
 int main()
 {
-	if( processinput() ) //error while reading input file
+	int min_per, total_transaction = processinput();
+	if( min_per <= 0 ) //error while reading input file ; or 0 transactions
 		return 1; 
-	
+
+	cout<<"Please enter minimum support % value ";
+	cin>>min_per;
+	MIN_SUPPORT = ceil(min_per*total_transaction)/100;
 	print_dataset(); //to print dataset
 	
 	cout<<"\nC1\n";
